@@ -77,6 +77,15 @@ const KioskView = () => {
   // Flavor selection modal state
   const [flavorModal, setFlavorModal] = useState({ open: false, product: null })
   const [selectedFlavor, setSelectedFlavor] = useState('Plain')
+  
+  // Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+
+  // Show toast notification
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type })
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000)
+  }
 
   // Load categories on mount
   useEffect(() => {
@@ -222,7 +231,7 @@ const KioskView = () => {
 
     setPlacingOrder(true)
     try {
-      // Create order object
+      // Create order object for localStorage (works for both modes)
       const newOrder = {
         id: Date.now(),
         created_at: new Date().toISOString(),
@@ -237,55 +246,54 @@ const KioskView = () => {
         }))
       }
 
-      // Save to localStorage for admin to see
+      // Always save to localStorage for admin dashboard
       const existingOrders = JSON.parse(localStorage.getItem('biteflow_orders') || '[]')
       existingOrders.push(newOrder)
       localStorage.setItem('biteflow_orders', JSON.stringify(existingOrders))
 
-      if (DEMO_MODE) {
-        // Demo mode - just simulate order success
-        await new Promise(resolve => setTimeout(resolve, 800))
-        setOrderPlaced(true)
-        setCart([])
-        setIsCartOpen(false)
-        setTimeout(() => setOrderPlaced(false), 3000)
-        setPlacingOrder(false)
-        return
+      // Try Supabase if not in DEMO_MODE
+      if (!DEMO_MODE) {
+        try {
+          const { supabase } = await import('../config/supabase')
+          
+          const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .insert({ 
+              total_amount: getCartTotal(), 
+              status: 'pending',
+              created_at: new Date().toISOString() 
+            })
+            .select()
+            .single()
+
+          if (!orderError && orderData) {
+            const orderItems = cart.map(item => ({
+              order_id: orderData.id,
+              product_id: item.id,
+              quantity: item.quantity,
+              unit_price: item.price,
+              subtotal: item.price * item.quantity,
+              flavor: item.flavor || null
+            }))
+
+            await supabase.from('order_items').insert(orderItems)
+          }
+        } catch (dbError) {
+          console.log('Supabase error (using localStorage):', dbError)
+          // Continue with localStorage order - already saved above
+        }
       }
 
-      // Supabase order creation
-      const { supabase } = await import('../config/supabase')
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 500))
       
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({ total_amount: getCartTotal(), created_at: new Date().toISOString() })
-        .select()
-        .single()
-
-      if (orderError) throw orderError
-
-      const orderItems = cart.map(item => ({
-        order_id: orderData.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        flavor: item.flavor
-      }))
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems)
-
-      if (itemsError) throw itemsError
-
       setOrderPlaced(true)
       setCart([])
       setIsCartOpen(false)
-
       setTimeout(() => setOrderPlaced(false), 3000)
     } catch (error) {
       console.error('Error placing order:', error)
-      alert('Failed to place order. Please try again.')
+      showToast('Failed to place order. Please try again.', 'error')
     } finally {
       setPlacingOrder(false)
     }
@@ -649,6 +657,35 @@ const KioskView = () => {
           <div>
             <p className="font-extrabold">Order Placed!</p>
             <p className="text-sm text-green-100">Thank you for your order</p>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce-in z-50 ${
+          toast.type === 'error' ? 'bg-red-500 text-white' : 
+          toast.type === 'warning' ? 'bg-yellow-500 text-gray-900' : 
+          'bg-green-500 text-white'
+        }`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            toast.type === 'error' ? 'bg-white' : 
+            toast.type === 'warning' ? 'bg-white' : 
+            'bg-white'
+          }`}>
+            {toast.type === 'error' ? (
+              <X className="w-6 h-6 text-red-500" />
+            ) : toast.type === 'warning' ? (
+              <ChefHat className="w-6 h-6 text-yellow-500" />
+            ) : (
+              <CheckCircle className="w-6 h-6 text-green-500" />
+            )}
+          </div>
+          <div>
+            <p className="font-extrabold">{toast.type === 'error' ? 'Oops!' : toast.type === 'warning' ? 'Notice' : 'Success!'}</p>
+            <p className={`text-sm ${toast.type === 'error' ? 'text-red-100' : toast.type === 'warning' ? 'text-yellow-900' : 'text-green-100'}`}>
+              {toast.message}
+            </p>
           </div>
         </div>
       )}

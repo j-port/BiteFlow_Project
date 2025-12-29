@@ -100,6 +100,28 @@ body {
   75% { transform: translateX(5px); }
 }
 
+@keyframes scale-up {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 .animate-slide-up {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -122,6 +144,14 @@ body {
 
 .animate-shake {
   animation: shake 0.3s ease-in-out;
+}
+
+.animate-scale-up {
+  animation: scale-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Thumb-friendly button styles */

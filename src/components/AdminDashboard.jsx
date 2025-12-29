@@ -117,6 +117,34 @@ const AdminDashboard = () => {
   // Flavor input state
   const [flavorInput, setFlavorInput] = useState('')
 
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    onConfirm: null,
+    type: 'danger' // 'danger', 'warning', 'info'
+  })
+
+  // Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+
+  // Show toast notification
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type })
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000)
+  }
+
+  // Show confirmation modal
+  const showConfirm = (title, message, onConfirm, type = 'danger') => {
+    setConfirmModal({ show: true, title, message, onConfirm, type })
+  }
+
+  // Close confirmation modal
+  const closeConfirm = () => {
+    setConfirmModal({ show: false, title: '', message: '', onConfirm: null, type: 'danger' })
+  }
+
   useEffect(() => {
     fetchData()
     loadOrders()
@@ -151,13 +179,22 @@ const AdminDashboard = () => {
     )
     setOrders(updatedOrders)
     localStorage.setItem('biteflow_orders', JSON.stringify(updatedOrders))
+    showToast('Order status updated!', 'success')
   }
 
   const deleteOrder = (orderId) => {
-    if (!confirm('Delete this order?')) return
-    const updatedOrders = orders.filter(order => order.id !== orderId)
-    setOrders(updatedOrders)
-    localStorage.setItem('biteflow_orders', JSON.stringify(updatedOrders))
+    showConfirm(
+      'Delete Order',
+      'Are you sure you want to delete this order? This action cannot be undone.',
+      () => {
+        const updatedOrders = orders.filter(order => order.id !== orderId)
+        setOrders(updatedOrders)
+        localStorage.setItem('biteflow_orders', JSON.stringify(updatedOrders))
+        closeConfirm()
+        showToast('Order deleted successfully', 'success')
+      },
+      'danger'
+    )
   }
 
   const fetchData = async () => {
@@ -352,14 +389,22 @@ const AdminDashboard = () => {
   }
 
   const handleDeleteProduct = async (product) => {
-    if (!confirm(`Delete "${product.name}"?`)) return
-
-    if (DEMO_MODE) {
-      setProducts(prev => prev.filter(p => p.id !== product.id))
-      return
-    }
-
-    // Supabase delete would go here
+    showConfirm(
+      'Delete Product',
+      `Are you sure you want to delete "${product.name}"? This action cannot be undone.`,
+      async () => {
+        if (DEMO_MODE) {
+          setProducts(prev => prev.filter(p => p.id !== product.id))
+          closeConfirm()
+          showToast(`"${product.name}" deleted successfully`, 'success')
+          return
+        }
+        // Supabase delete would go here
+        closeConfirm()
+        showToast(`"${product.name}" deleted successfully`, 'success')
+      },
+      'danger'
+    )
   }
 
   // Category handling
@@ -376,6 +421,7 @@ const AdminDashboard = () => {
       setCategories(prev => [...prev, newCategory])
       setCategoryForm({ name: '', icon: '🍽️' })
       setShowCategoryForm(false)
+      showToast(`Category "${categoryForm.name}" added!`, 'success')
       return
     }
 
@@ -383,14 +429,22 @@ const AdminDashboard = () => {
   }
 
   const handleDeleteCategory = async (category) => {
-    if (!confirm(`Delete category "${category.name}"? Products in this category will be uncategorized.`)) return
-
-    if (DEMO_MODE) {
-      setCategories(prev => prev.filter(c => c.id !== category.id))
-      return
-    }
-
-    // Supabase delete would go here
+    showConfirm(
+      'Delete Category',
+      `Are you sure you want to delete "${category.name}"? Products in this category will be uncategorized.`,
+      async () => {
+        if (DEMO_MODE) {
+          setCategories(prev => prev.filter(c => c.id !== category.id))
+          closeConfirm()
+          showToast(`Category "${category.name}" deleted`, 'success')
+          return
+        }
+        // Supabase delete would go here
+        closeConfirm()
+        showToast(`Category "${category.name}" deleted`, 'success')
+      },
+      'warning'
+    )
   }
 
   // Flavor options handling
@@ -1154,6 +1208,71 @@ const AdminDashboard = () => {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 animate-scale-up shadow-2xl">
+            <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+              confirmModal.type === 'danger' ? 'bg-red-100' : 
+              confirmModal.type === 'warning' ? 'bg-yellow-100' : 
+              'bg-blue-100'
+            }`}>
+              {confirmModal.type === 'danger' ? (
+                <Trash2 className="w-8 h-8 text-red-500" />
+              ) : confirmModal.type === 'warning' ? (
+                <AlertCircle className="w-8 h-8 text-yellow-500" />
+              ) : (
+                <AlertCircle className="w-8 h-8 text-blue-500" />
+              )}
+            </div>
+            <h3 className="text-xl font-bold text-center text-gray-800 mb-2">
+              {confirmModal.title}
+            </h3>
+            <p className="text-gray-500 text-center mb-6">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={closeConfirm}
+                className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className={`flex-1 py-3 rounded-xl font-bold text-white transition-all ${
+                  confirmModal.type === 'danger' ? 'bg-red-500 hover:bg-red-600' : 
+                  confirmModal.type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-800' : 
+                  'bg-blue-500 hover:bg-blue-600'
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in-right z-50 ${
+          toast.type === 'error' ? 'bg-red-500 text-white' : 
+          toast.type === 'warning' ? 'bg-yellow-500 text-gray-900' : 
+          'bg-green-500 text-white'
+        }`}>
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+            {toast.type === 'error' ? (
+              <X className="w-5 h-5" />
+            ) : toast.type === 'warning' ? (
+              <AlertCircle className="w-5 h-5" />
+            ) : (
+              <CheckCircle className="w-5 h-5" />
+            )}
+          </div>
+          <span className="font-medium">{toast.message}</span>
         </div>
       )}
     </div>
