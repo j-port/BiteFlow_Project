@@ -56,11 +56,11 @@ npm install
 
 #### Run Database Schema
 1. Open Supabase SQL Editor
-2. Copy and paste contents from `supabase-schema.sql`
+2. Copy and paste contents from `database/schema.sql`
 3. Click "Run" to create tables
 
 #### Seed Initial Data (Optional)
-1. In SQL Editor, run `seed-database.sql` 
+1. In SQL Editor, run `database/seed.sql` 
 2. This adds 4 categories and 18 products
 
 #### Create Storage Bucket
@@ -102,21 +102,31 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ```
 biteflow/
+├── database/                 # Database files
+│   ├── schema.sql           # Database schema
+│   └── seed.sql             # Sample data
+├── public/                   # Static assets
 ├── src/
-│   ├── components/
-│   │   ├── KioskView.jsx       # Customer kiosk interface
-│   │   └── AdminDashboard.jsx  # Admin management panel
-│   ├── supabaseClient.js       # Supabase configuration & helpers
-│   ├── App.jsx                 # Main app with routing
-│   ├── main.jsx               # React entry point
-│   └── index.css              # Tailwind CSS imports
-├── supabase-schema.sql        # Database schema
-├── seed-database.sql          # Sample data (optional)
-├── .env                       # Environment variables (create this)
-├── tailwind.config.js         # Tailwind configuration
-├── postcss.config.js          # PostCSS configuration
-├── vite.config.js             # Vite configuration
-└── package.json               # Dependencies
+│   ├── components/           # React components
+│   │   ├── KioskView.jsx     # Customer kiosk interface
+│   │   └── AdminDashboard.jsx # Admin management panel
+│   ├── config/               # Configuration files
+│   │   └── supabase.js       # Supabase client & API helpers
+│   ├── constants/            # App constants
+│   │   └── index.js          # Application constants
+│   ├── services/             # Business logic services
+│   ├── utils/                # Utility functions
+│   │   └── index.js          # Helper functions
+│   ├── App.jsx               # Main app with routing
+│   ├── main.jsx              # React entry point
+│   └── index.css             # Tailwind CSS imports
+├── .env                      # Environment variables (create this)
+├── .gitignore                # Git ignore rules
+├── eslint.config.js          # ESLint configuration
+├── tailwind.config.js        # Tailwind configuration
+├── postcss.config.js         # PostCSS configuration
+├── vite.config.js            # Vite configuration
+└── package.json              # Dependencies
 ```
 
 ## 🗄️ Database Schema

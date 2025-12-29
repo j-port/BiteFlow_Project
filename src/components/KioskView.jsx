@@ -103,7 +103,7 @@ const KioskView = () => {
     
     // Supabase fetch (when connected)
     try {
-      const { supabase } = await import('../supabaseClient')
+      const { supabase } = await import('../config/supabase')
       const { data, error } = await supabase.from('categories').select('*').order('name')
       if (!error && data) {
         setCategories(data)
@@ -132,7 +132,7 @@ const KioskView = () => {
     
     // Supabase fetch (when connected)
     try {
-      const { supabase } = await import('../supabaseClient')
+      const { supabase } = await import('../config/supabase')
       const { data, error } = await supabase
         .from('products')
         .select('*')

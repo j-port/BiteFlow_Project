@@ -176,7 +176,7 @@ const AdminDashboard = () => {
       return
     }
     try {
-      const { supabase } = await import('../supabaseClient')
+      const { supabase } = await import('../config/supabase')
       const { data } = await supabase.from('categories').select('*').order('name')
       setCategories(data || [])
     } catch {
@@ -190,7 +190,7 @@ const AdminDashboard = () => {
       return
     }
     try {
-      const { supabase } = await import('../supabaseClient')
+      const { supabase } = await import('../config/supabase')
       const { data } = await supabase.from('products').select('*, categories(name)').order('name')
       setProducts(data || [])
     } catch {
