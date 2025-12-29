@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { 
   LayoutDashboard,
   Package,
@@ -26,7 +27,8 @@ import {
   ClipboardList,
   CheckCircle,
   AlertCircle,
-  Timer
+  Timer,
+  LogOut
 } from 'lucide-react'
 
 // Demo mode - set to false when connected to Supabase
@@ -167,13 +169,7 @@ const AdminDashboard = () => {
   }, [])
 
   const loadOrders = async () => {
-    // First load from localStorage (for offline/fallback)
-    const savedOrders = localStorage.getItem('biteflow_orders')
-    if (savedOrders) {
-      setOrders(JSON.parse(savedOrders))
-    }
-
-    // Then try to load from Supabase for cross-device sync
+    // Try to load from Supabase first for cross-device sync
     if (!DEMO_MODE) {
       try {
         const { supabase } = await import('../config/supabase')
@@ -196,6 +192,7 @@ const AdminDashboard = () => {
             created_at: order.created_at,
             status: order.status || 'pending',
             total: order.total_amount,
+            customer_name: order.customer_name || '',
             items: order.order_items?.map(item => ({
               id: item.product_id,
               name: item.products?.name || 'Unknown Product',
@@ -205,10 +202,17 @@ const AdminDashboard = () => {
             })) || []
           }))
           setOrders(transformedOrders)
+          return // Success - don't fall back to localStorage
         }
       } catch (err) {
-        console.log('Using localStorage orders:', err)
+        console.log('Supabase error, falling back to localStorage:', err)
       }
+    }
+
+    // Fallback to localStorage if Supabase fails or in DEMO_MODE
+    const savedOrders = localStorage.getItem('biteflow_orders')
+    if (savedOrders) {
+      setOrders(JSON.parse(savedOrders))
     }
   }
 
@@ -536,6 +540,14 @@ const AdminDashboard = () => {
     return categories.find(c => c.id === categoryId)?.name || 'Uncategorized'
   }
 
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/login')
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -550,12 +562,16 @@ const AdminDashboard = () => {
             </Link>
             <div>
               <h1 className="text-lg font-bold">BiteFlow Admin</h1>
-              <p className="text-xs text-gray-400">Management Dashboard</p>
+              <p className="text-xs text-gray-400">{user?.email || 'Management Dashboard'}</p>
             </div>
           </div>
-          <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
-            <ChefHat className="w-5 h-5 text-gray-800" />
-          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-all active:scale-95"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
         </div>
       </header>
 
