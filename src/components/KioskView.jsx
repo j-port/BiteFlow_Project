@@ -231,27 +231,10 @@ const KioskView = () => {
 
     setPlacingOrder(true)
     try {
-      // Create order object for localStorage (works for both modes)
-      const newOrder = {
-        id: Date.now(),
-        created_at: new Date().toISOString(),
-        status: 'pending',
-        total: getCartTotal(),
-        items: cart.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          flavor: item.flavor || null
-        }))
-      }
+      let orderId = Date.now() // Default to timestamp ID
+      let orderSavedToSupabase = false
 
-      // Always save to localStorage for admin dashboard
-      const existingOrders = JSON.parse(localStorage.getItem('biteflow_orders') || '[]')
-      existingOrders.push(newOrder)
-      localStorage.setItem('biteflow_orders', JSON.stringify(existingOrders))
-
-      // Try Supabase if not in DEMO_MODE
+      // Try Supabase FIRST if not in DEMO_MODE
       if (!DEMO_MODE) {
         try {
           const { supabase } = await import('../config/supabase')
@@ -267,6 +250,9 @@ const KioskView = () => {
             .single()
 
           if (!orderError && orderData) {
+            orderId = orderData.id // Use Supabase UUID
+            orderSavedToSupabase = true
+
             const orderItems = cart.map(item => ({
               order_id: orderData.id,
               product_id: item.id,
@@ -279,10 +265,30 @@ const KioskView = () => {
             await supabase.from('order_items').insert(orderItems)
           }
         } catch (dbError) {
-          console.log('Supabase error (using localStorage):', dbError)
-          // Continue with localStorage order - already saved above
+          console.log('Supabase error, saving to localStorage:', dbError)
         }
       }
+
+      // Create order object for localStorage (backup/offline support)
+      const newOrder = {
+        id: orderId,
+        created_at: new Date().toISOString(),
+        status: 'pending',
+        total: getCartTotal(),
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          flavor: item.flavor || null
+        })),
+        synced: orderSavedToSupabase
+      }
+
+      // Save to localStorage as backup
+      const existingOrders = JSON.parse(localStorage.getItem('biteflow_orders') || '[]')
+      existingOrders.push(newOrder)
+      localStorage.setItem('biteflow_orders', JSON.stringify(existingOrders))
 
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 500))

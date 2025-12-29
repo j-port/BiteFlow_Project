@@ -166,19 +166,73 @@ const AdminDashboard = () => {
     }
   }, [])
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
+    // First load from localStorage (for offline/fallback)
     const savedOrders = localStorage.getItem('biteflow_orders')
     if (savedOrders) {
       setOrders(JSON.parse(savedOrders))
     }
+
+    // Then try to load from Supabase for cross-device sync
+    if (!DEMO_MODE) {
+      try {
+        const { supabase } = await import('../config/supabase')
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (
+              *,
+              products (name, image_url)
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(100)
+
+        if (!error && data) {
+          // Transform Supabase data to match our format
+          const transformedOrders = data.map(order => ({
+            id: order.id,
+            created_at: order.created_at,
+            status: order.status || 'pending',
+            total: order.total_amount,
+            items: order.order_items?.map(item => ({
+              id: item.product_id,
+              name: item.products?.name || 'Unknown Product',
+              price: item.unit_price,
+              quantity: item.quantity,
+              flavor: item.flavor
+            })) || []
+          }))
+          setOrders(transformedOrders)
+        }
+      } catch (err) {
+        console.log('Using localStorage orders:', err)
+      }
+    }
   }
 
-  const updateOrderStatus = (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus) => {
+    // Update locally first (optimistic update)
     const updatedOrders = orders.map(order => 
       order.id === orderId ? { ...order, status: newStatus } : order
     )
     setOrders(updatedOrders)
     localStorage.setItem('biteflow_orders', JSON.stringify(updatedOrders))
+
+    // Sync to Supabase
+    if (!DEMO_MODE) {
+      try {
+        const { supabase } = await import('../config/supabase')
+        await supabase
+          .from('orders')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', orderId)
+      } catch (err) {
+        console.log('Supabase update error:', err)
+      }
+    }
+    
     showToast('Order status updated!', 'success')
   }
 
@@ -186,10 +240,21 @@ const AdminDashboard = () => {
     showConfirm(
       'Delete Order',
       'Are you sure you want to delete this order? This action cannot be undone.',
-      () => {
+      async () => {
         const updatedOrders = orders.filter(order => order.id !== orderId)
         setOrders(updatedOrders)
         localStorage.setItem('biteflow_orders', JSON.stringify(updatedOrders))
+
+        // Delete from Supabase
+        if (!DEMO_MODE) {
+          try {
+            const { supabase } = await import('../config/supabase')
+            await supabase.from('orders').delete().eq('id', orderId)
+          } catch (err) {
+            console.log('Supabase delete error:', err)
+          }
+        }
+
         closeConfirm()
         showToast('Order deleted successfully', 'success')
       },
