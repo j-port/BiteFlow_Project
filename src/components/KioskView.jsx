@@ -254,7 +254,7 @@ const KioskView = () => {
       }
 
       // Supabase order creation
-      const { supabase } = await import('../supabaseClient')
+      const { supabase } = await import('../config/supabase')
       
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
