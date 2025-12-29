@@ -657,6 +657,11 @@ const AdminDashboard = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-bold text-gray-800">Order #{order.id.toString().slice(-6).toUpperCase()}</p>
+                          {order.customer_name && (
+                            <p className="text-sm font-semibold text-red-600">
+                              👤 {order.customer_name}
+                            </p>
+                          )}
                           <p className="text-xs text-gray-500">
                             {new Date(order.created_at).toLocaleString('en-US', {
                               month: 'short',

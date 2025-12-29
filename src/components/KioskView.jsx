@@ -74,6 +74,9 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [placingOrder, setPlacingOrder] = useState(false)
   
+  // Customer name for order
+  const [customerName, setCustomerName] = useState('')
+  
   // Flavor selection modal state
   const [flavorModal, setFlavorModal] = useState({ open: false, product: null })
   const [selectedFlavor, setSelectedFlavor] = useState('Plain')
@@ -233,6 +236,7 @@ const KioskView = () => {
     try {
       let orderId = Date.now() // Default to timestamp ID
       let orderSavedToSupabase = false
+      const trimmedName = customerName.trim() || 'Guest'
 
       // Try Supabase FIRST if not in DEMO_MODE
       if (!DEMO_MODE) {
@@ -244,6 +248,7 @@ const KioskView = () => {
             .insert({ 
               total_amount: getCartTotal(), 
               status: 'pending',
+              customer_name: trimmedName,
               created_at: new Date().toISOString() 
             })
             .select()
@@ -274,6 +279,7 @@ const KioskView = () => {
         id: orderId,
         created_at: new Date().toISOString(),
         status: 'pending',
+        customer_name: trimmedName,
         total: getCartTotal(),
         items: cart.map(item => ({
           id: item.id,
@@ -295,6 +301,7 @@ const KioskView = () => {
       
       setOrderPlaced(true)
       setCart([])
+      setCustomerName('')
       setIsCartOpen(false)
       setTimeout(() => setOrderPlaced(false), 3000)
     } catch (error) {
@@ -307,6 +314,7 @@ const KioskView = () => {
 
   const clearCart = () => {
     setCart([])
+    setCustomerName('')
     setIsCartOpen(false)
   }
 
@@ -552,6 +560,20 @@ const KioskView = () => {
 
             {/* Cart Footer */}
             <div className="border-t p-4 space-y-4 bg-gray-50">
+              {/* Customer Name Input */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  👤 Your Name
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter your name (optional)"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 outline-none text-lg font-medium transition-colors"
+                />
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-gray-600 font-semibold">Total Amount</span>
                 <span className="text-3xl font-extrabold text-red-600">
